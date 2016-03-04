@@ -1,2 +1,3 @@
 # Ignore checkpoints created (especially for the examples)
 .ipynb_checkpoints
+*.pyc
