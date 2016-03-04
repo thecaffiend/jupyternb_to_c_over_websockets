@@ -19,10 +19,17 @@ display on the notebook.
 `source activate websocket_ui_client`
 * Install new packages (as needed...should be documented here already)
 `conda install --name websocket_ui_client [packages]` or `pip install [packages]`
-* Run websocket server (needs its own process) from the server_side dir
-`python server_main.py`
+* Run notebook server (blocking) `jupyter notebook --port [port_num]`
+* Load the notebook 'WebsocketClient Sandbox'
+* Have fun.
 
 ## TODO:
 * make able to send/receive custom messages
-* get working with jupyter notebook
- * Run notebook server (needs its own bash env) `jupyter notebook --port [port_num]`
+* customizable ports
+* jupyter config values (python path)
+* server extension for our web socket handler (says REST in the docs, but the
+  websocket class extends from request handler, which is what is needed.
+
+## Notes:
+* There's a test client (blocking) from the client_side dir:
+  `python client_main.py`
