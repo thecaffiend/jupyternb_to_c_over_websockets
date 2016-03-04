@@ -24,3 +24,5 @@ environment)`pip install [packages]`
 ## TODO:
 * make able to send/receive custom messages
 * get working with c driver over sockets
+ * implement a way to send all driver messages to all clients (or register
+   message types of interest)
