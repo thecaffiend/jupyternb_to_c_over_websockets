@@ -27,8 +27,12 @@ display on the notebook.
 * make able to send/receive custom messages
 * customizable ports
 * jupyter config values (python path)
-* server extension for our web socket handler (says REST in the docs, but the
-  websocket class extends from request handler, which is what is needed.
+* server extensions
+ * for our web socket handler (says REST in the docs, but the websocket class
+   extends from request handler, which is what is needed. Can we do this
+   since it's a client?
+ * for the socket client from the c side? can this be combined with the
+   websocket handler? Can we even do this since it's a client?
 
 ## Notes:
 * There's a test client (blocking) from the client_side dir:
