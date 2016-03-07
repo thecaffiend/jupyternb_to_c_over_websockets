@@ -1,6 +1,6 @@
 from tornado import websocket
 
-# TODO: Do better than global...
+import json
 
 class WSHandler(websocket.WebSocketHandler):
     _clients = []
@@ -12,16 +12,26 @@ class WSHandler(websocket.WebSocketHandler):
         self.write_message("Hello World")
 
     def on_message(self, message):
-        print('message received %s' % message)
-        # reply that we got it - good for debug, but starts an infinite loop
-        #WSHandler._clients[WSHandler._clients.index(self)].write_message(
-        # {
-        #  'message': message, 
-        #  'it': 'blended'
-        # })
-
+        print('message received in WSHandler')
+        try:
+            self._handle_message(json.JSONDecoder().decode(message))
+        except json.JSONDecodeError:
+            print('Could not deserialize the incoming message: %s' % (message))
 
     def on_close(self):
         print('connection closed')
         # remove us from the list
         WSHandler._clients.append(self)
+
+    def _handle_message(self, message):
+        """
+        Handle the incomming message. Could have more than one command included
+        """
+        if hasattr(message, 'items'):
+            # this is the normal case when not debugging, a dict
+            for cmd, cmd_val in message.items():
+                print('message received (%s: %s)' % (cmd, cmd_val))
+                # actually handle here...
+        else:
+            # not normal case (except for debug), print message as a string
+            print('WSHandler processed message: %s' % (message))
