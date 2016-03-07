@@ -1,5 +1,10 @@
 """
 Adapted from: https://docs.python.org/3.4/howto/sockets.html
+
+TODO: Get this based on tornado TCPClient class instead of this half baked
+      thing
+TODO: Do co-routines *or* callbacks. This goes for the whole thing, not just
+      this class.
 """
 
 import socket
