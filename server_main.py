@@ -16,19 +16,22 @@ application = web.Application([
 def process_all(drvsock):
     """
     """
+    # TODO: make this so we're not passing the socket (actually TCP client)
+    #       around everywhere...
     process_drv_socket(drvsock)
-    process_ws_commands()
+    process_ws_commands(drvsock)
 
 @gen.coroutine
 def process_drv_socket(sock):
     """
     Periodically called function for processing the api driver's socket
+    TODO: rename this function and arguments (not a sock)
     """
     sock.drvsend('test')
     yield sock.drvreceive()
 
 @gen.coroutine
-def process_ws_commands():
+def process_ws_commands(sock):
     """
     """
     print('processing commands from wsclients')
@@ -36,6 +39,9 @@ def process_ws_commands():
     del WSHandler._cmd_list[:]
     for cmd, cmd_val in cmds:
         print('   Processing cmd [%s] with val [%s]' % (cmd, cmd_val))
+        # TODO: actually do stuff with the messages here, like pass them to the
+        #       API server.
+        sock.handle_ws_command(cmd, cmd_val)
 
 # how fast should we process the driver socket (ms)
 LINK_RATE = 2000

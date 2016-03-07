@@ -84,12 +84,18 @@ class DriverClient:
         print('Received %s from the API server' % (ret))
         return ret
 
-
     def close(self):
         """
         Close our socket.
         """
         self.sock.close()
+
+    def handle_ws_command(self, cmd, cmd_val):
+        """
+        Handle a command from the wsserver.
+        """
+        print('DriverClient is handling (%s, %s)' % (cmd, cmd_val))
+        pass
 
     # TODO: just for testing, remove
     def test_echo(self):
