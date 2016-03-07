@@ -62,7 +62,7 @@ class DriverClient:
 
         return sent
 
-    # @gen.coroutine
+    @gen.coroutine
     def drvreceive(self):
         """
         Receive from the driver.
@@ -81,7 +81,7 @@ class DriverClient:
         # return b''.join(chunks)
 
         ret = self.sock.recv(2048)
-
+        print('Received %s from the API server' % (ret))
         return ret
 
 
