@@ -4,6 +4,10 @@ import json
 
 class WSHandler(websocket.WebSocketHandler):
     _clients = []
+    # TODO: there has to be a better way to make this data available to the
+    #       server_main processor. This assumes only one client (other clients'
+    #       commands will go here too...
+    _cmd_list = []
 
     def open(self):
         print('new connection')
@@ -32,6 +36,7 @@ class WSHandler(websocket.WebSocketHandler):
             for cmd, cmd_val in message.items():
                 print('message received (%s: %s)' % (cmd, cmd_val))
                 # actually handle here...
+                WSHandler._cmd_list.append((cmd, cmd_val))
         else:
             # not normal case (except for debug), print message as a string
             print('WSHandler processed message: %s' % (message))

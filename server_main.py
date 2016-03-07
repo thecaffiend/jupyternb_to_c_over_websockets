@@ -13,12 +13,29 @@ application = web.Application([
 ])
 
 @gen.coroutine
+def process_all(drvsock):
+    """
+    """
+    process_drv_socket(drvsock)
+    process_ws_commands()
+
+@gen.coroutine
 def process_drv_socket(sock):
     """
     Periodically called function for processing the api driver's socket
     """
     sock.drvsend('test')
     yield sock.drvreceive()
+
+@gen.coroutine
+def process_ws_commands():
+    """
+    """
+    print('processing commands from wsclients')
+    cmds = list(WSHandler._cmd_list)
+    del WSHandler._cmd_list[:]
+    for cmd, cmd_val in cmds:
+        print('   Processing cmd [%s] with val [%s]' % (cmd, cmd_val))
 
 # how fast should we process the driver socket (ms)
 LINK_RATE = 2000
@@ -50,15 +67,16 @@ if __name__ == "__main__":
 
         # TODO: this is using the callback style. other things use the
         #       coroutine style. pick one.
-        # background processs of driver socket every LINK_RATE milliseconds
-        drvsock_task = ioloop.PeriodicCallback(lambda: process_drv_socket(drvsock), LINK_RATE)
-        drvsock_task.start()
+
+        # background processs every LINK_RATE milliseconds
+        proc_task = ioloop.PeriodicCallback(lambda: process_all(drvsock), LINK_RATE)
+        proc_task.start()
 
         # start the ioloop
         ioloop.IOLoop.instance().start()
 
     except KeyboardInterrupt:
         http_server.stop()
-        drvsock_task.stop()
+        proc_task.stop()
         drvsock.close()
         print('KeyboardInterrupt: Killed the server')
