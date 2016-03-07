@@ -15,9 +15,16 @@
 #define MAXBUF		1024
 
 int main(int Count, char *Strings[]) {
+  // server vars
   int sockfd;
 	struct sockaddr_in self;
 	char buffer[MAXBUF];
+
+  // client vars
+  int clientfd;
+  struct sockaddr_in client_addr;
+  int addrlen=sizeof(client_addr);
+
 
 	// Create streaming socket
   if ( (sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
@@ -43,22 +50,26 @@ int main(int Count, char *Strings[]) {
 		exit(errno);
 	}
 
-	// Forever...
-	while (1) {
-    int clientfd;
-		struct sockaddr_in client_addr;
-		int addrlen=sizeof(client_addr);
+  // wait for a connection
+  printf("Waiting on client connection...\n");
 
-		// accept a connection (creating a data pipe)
-		clientfd = accept(sockfd, (struct sockaddr*)&client_addr, &addrlen);
-		printf("%s:%d connected\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+  while(1) {
+    // accept a connection. for this we only have one client, so once
+    // connected, break from here and start proessing messages.
+    clientfd = accept(sockfd, (struct sockaddr*)&client_addr, &addrlen);
+    printf("%s:%d connected\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    break;
+  }
 
-		// Echo back anything sent
-		send(clientfd, buffer, recv(clientfd, buffer, MAXBUF, 0), 0);
+  while (1) {
+    // TODO: need to send a signal to break this loop from a client
 
-		// Close data connection
-		close(clientfd);
-	}
+    // Echo back anything sent for now.
+    send(clientfd, buffer, recv(clientfd, buffer, MAXBUF, 0), 0);
+
+  }
+  // Close client connection
+  close(clientfd);
 
 	// Clean up (should never get here!)
 	close(sockfd);
