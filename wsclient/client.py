@@ -1,7 +1,7 @@
 """
 Simple Web socket client implementation using Tornado framework.
 
-Stolen from here:
+Stolen/adapted from here:
     http://code.activestate.com/recipes/579076-simple-web-socket-client-implementation-using-torn/
 
 """
@@ -56,7 +56,7 @@ class WebSocketClient():
         """
         if not self._ws_connection:
             raise RuntimeError('Web socket connection is closed.')
-
+        
         self._ws_connection.write_message(escape.utf8(json.dumps(data)))
 
     def close(self):
