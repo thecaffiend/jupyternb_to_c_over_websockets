@@ -7,8 +7,10 @@ driver to be sent over the websocket.
 
 ## Dependencies
 * Anaconda 2.5.0 Envrionment (python 3.4)
-** tornado
-** pep8
+ * tornado
+ * pep8
+ * ipython
+ * cython (0.23.4 used)
 
 ## Usage
 * Make the environment (assuming Anaconda 2.5.0 is installed)
