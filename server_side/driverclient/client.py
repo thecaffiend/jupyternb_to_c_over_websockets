@@ -39,10 +39,12 @@ class DriverClient:
         port: Port to connect to
         """
         self.sock.connect((host, port))
-        # TODO: set non-blocking and use select to determine when to read
-        # socket.setblocking(0)
 
-    # @gen.coroutine
+        # TODO: use select to determine when to read, otherwise this will throw
+        #       an occasional exception on read...
+        self.sock.setblocking(0)
+
+    @gen.coroutine
     def drvsend(self, msg):
         """
         Send to the driver.
@@ -90,12 +92,14 @@ class DriverClient:
         """
         self.sock.close()
 
+    @gen.coroutine
     def handle_ws_command(self, cmd, cmd_val):
         """
         Handle a command from the wsserver.
         """
         print('DriverClient is handling (%s, %s)' % (cmd, cmd_val))
-        pass
+        sent =  self.drvsend("{%s, %s}" % (cmd, cmd_val))
+        return sent
 
     # TODO: just for testing, remove
     def test_echo(self):
