@@ -21,6 +21,8 @@ display on the notebook.
 `conda install --name websocket_ui_client [packages]` or `pip install [packages]`
 * Run notebook server (blocking) `jupyter notebook --port [port_num]`
 * Load the notebook 'WebsocketClient Sandbox'
+* Change the client_side_path in the first cell to point at where your
+  client_side is
 * Have fun.
 
 ## TODO:
