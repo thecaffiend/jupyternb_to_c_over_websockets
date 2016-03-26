@@ -41,7 +41,7 @@ class WSHandler(websocket.WebSocketHandler):
         """
         print('connection closed')
         # remove us from the list
-        WSHandler._connections.append(self)
+        WSHandler._connections.remove(self)
 
     def _handle_message(self, message):
         """
