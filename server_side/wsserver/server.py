@@ -49,9 +49,11 @@ class WSHandler(websocket.WebSocketHandler):
         """
         if hasattr(message, 'items'):
             # this is the normal case when not debugging, a dict
-            for cmd, cmd_val in message.items():
-                print('message received (%s: %s)' % (cmd, cmd_val))
-                WSHandler._cmd_list.append((cmd, cmd_val))
+            # for cmd, cmd_val in message.items():
+            #     print('message received (%s: %s)' % (cmd, cmd_val))
+            #     WSHandler._cmd_list.append((cmd, cmd_val))
+            WSHandler._cmd_list.append(message)
+
         else:
             # not normal case (except for debug), print message as a string
             print('WSHandler processed message: %s' % (message))
