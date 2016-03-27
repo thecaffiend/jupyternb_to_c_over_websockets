@@ -101,6 +101,15 @@ class DriverClient:
         sent =  self.drvsend("{%s, %s}" % (cmd, cmd_val))
         return sent
 
+    @gen.coroutine
+    def handle_ws_msg(self, msg):
+        """
+        Handle a message (dict) from the wsserver.
+        """
+        print('DriverClient is handling %s' % (msg))
+        sent =  self.drvsend("%s" % (msg))
+        return sent
+
     # TODO: just for testing, remove
     def test_echo(self):
         self.connect("127.0.0.1", 60002)
