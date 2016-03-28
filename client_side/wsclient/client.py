@@ -69,6 +69,7 @@ class WebSocketClient():
         if not self._ws_connection:
             raise RuntimeError('Web socket connection is closed.')
 
+        # TODO: remove print (debug) and make one liner write_message
         jdata = escape.utf8(json.dumps(data))
         print('WSC: sending WSS %s' % (jdata))
         self._ws_connection.write_message(escape.utf8(json.dumps(data)))
@@ -137,7 +138,7 @@ class TestWebSocketClient(WebSocketClient):
         """
         """
         # handle the message coming in from the driver side (via the WSHandler)
-        # TODO: actually do something with the message...
+        # TODO: something other than callbacks?
         print('%s._on_message: precessing %s from the server_side' % (TWSCLIENTID, msg))
         if self._msgcallback:
             print('calling callback!')
@@ -161,4 +162,6 @@ class TestWebSocketClient(WebSocketClient):
         print('Connection error: %s', exception)
 
     def msg_callback(self, cb):
+        """
+        """
         self._msgcallback = cb;

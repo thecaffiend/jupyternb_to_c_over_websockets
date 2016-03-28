@@ -69,10 +69,8 @@ def process_ws_commands(sock):
     cmds = list(WSHandler._cmd_list)
 #    print("%s.process_ws_commands: processing commands from wsclients %s" % (SRVMAINID, cmds))
     del WSHandler._cmd_list[:]
-#    for cmd, cmd_val in cmds:
-        # print('   Processing cmd [%s] with val [%s]' % (cmd, cmd_val))
-        # sock.handle_ws_command(cmd, cmd_val)
-        # TODO: Get rid of the cmd/value stuff...
+    # TODO: Get rid of the cmd/value stuff. Move to dicts or wrapped header
+    #       structs
     for msg in cmds:
         print('   Processing msg %s' % (msg))
         sock.handle_ws_msg(msg)

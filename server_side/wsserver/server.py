@@ -3,6 +3,7 @@ from tornado import websocket
 import json
 
 class WSHandler(websocket.WebSocketHandler):
+    # Set of connected WSHandlers
     _connections = set()
     # TODO: there has to be a better way to make this data available to the
     #       server_main processor. This assumes only one client (other clients'
@@ -48,10 +49,8 @@ class WSHandler(websocket.WebSocketHandler):
         Handle the incomming message. Could have more than one command included
         """
         if hasattr(message, 'items'):
-            # this is the normal case when not debugging, a dict
-            # for cmd, cmd_val in message.items():
-            #     print('message received (%s: %s)' % (cmd, cmd_val))
-            #     WSHandler._cmd_list.append((cmd, cmd_val))
+            # TODO: dicts here, or switch out with wrapped header structs?
+            #       either way, clean up
             WSHandler._cmd_list.append(message)
 
         else:
