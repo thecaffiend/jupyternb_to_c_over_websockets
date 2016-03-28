@@ -28,7 +28,7 @@ Files are maintained. If problems are found, please drop a line.
   things
 
 ### General TODO
-* Better documentation
+* Better documentation (README and code...especially code)
 * Clean up coroutines vs callbacks on the Python side (go with coroutines)
 * Better encapsulation where warranted on the Python side.
 * look at Jupyter server extensions
