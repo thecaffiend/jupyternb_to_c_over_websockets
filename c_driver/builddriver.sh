@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# build the driver...
+gcc driver.c -o driver -I"./include"

@@ -10,6 +10,7 @@
 #include <resolv.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include "mainheader.h"
 
 #define MY_PORT		60002
 #define MAXBUF		1024
