@@ -1,10 +1,6 @@
 # don't know if this will work on windows...
 from libc.stdint cimport int32_t, uint32_t
 
-# cdef extern from *:
-#     cdef struct __sc_header_s
-#     ctypedef __sc_header_s SC_HEADER_t
-
 # for scommon.h includes. since mainheader.h includes it, we don't want to
 # re-include here.
 cdef extern from *:
@@ -17,9 +13,16 @@ cdef extern from *:
 
     ctypedef __sc_header_s SC_HEADER_t
 
+    cdef enum __sc_msg_types_e:
+      SC_GET_REQ = 10
+      SC_GET_RESP
+      SC_SET_REQ = 100
+      SC_SET_RESP
+      SC_END_MSG_TYPE
+
+    ctypedef __sc_msg_types_e SC_MSG_TYPES_t
 
 cdef extern from "mainheader.h":
-
     cdef int MH_MAX_NAME_LEN
     cdef int MH_MAX_ITEMS
 
@@ -28,6 +31,7 @@ cdef extern from "mainheader.h":
         int32_t scMsgType
         # TODO: how to use MH_MAX_NAME_LEN instead of 32 here?
         char    nameStr[32]
+#        char    nameStr[MH_MAX_NAME_LEN]
 
     ctypedef __mh_list_item_s MH_LIST_ITEM_t
 

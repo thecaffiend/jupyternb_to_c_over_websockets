@@ -11,10 +11,44 @@ from libc.string cimport (
 from header_wrapper cimport (
     # structs
     MH_LIST_ITEM_t,
+    MH_ITEM_LIST_t,
+    SC_HEADER_t,
+    # enums
+    SC_MSG_TYPES_t,
     # defines/constants
     MH_MAX_NAME_LEN,
+    MH_MAX_ITEMS,
 )
 
+from libc.stdint cimport int32_t, uint32_t
+
+# struct wrappers
+
+# this gives access to the structs as dicts with keys equal to the struct
+# fields. it *does not* respect things like name lengths, so those have to
+# be added in extension classes like below.
+
+# TODO: wrap these dicts to protect types (e.g. MH_LIST_ITEM['nameStr'] can be
+#       assigned non-b'' strings if you want) and to enforce length constraints
+#       (thought the buffer is supposed to be 32 chars, it will happily take
+#       more, which I imagine will cause problems when used in the
+#       MH_ITEM_LIST and converted to a byte array).
+cpdef  SC_HEADER_t _SC_HEADER
+SC_HEADER = _SC_HEADER
+
+cpdef  MH_LIST_ITEM_t _MH_LIST_ITEM
+MH_LIST_ITEM = _MH_LIST_ITEM
+
+cpdef  MH_ITEM_LIST_t _MH_ITEM_LIST
+MH_ITEM_LIST = _MH_ITEM_LIST
+
+# enum wrappers
+cpdef  SC_MSG_TYPES_t _SC_MSG_TYPES
+SC_MSG_TYPES = _SC_MSG_TYPES
+
+# consts
+MAX_NAME_LEN = MH_MAX_NAME_LEN
+MAX_LIST_ITEMS = MH_MAX_ITEMS
 
 cdef class MHListItem:
     """
@@ -77,6 +111,8 @@ cdef class MHListItem:
         def __set__(self, const char* ns):
             # ns should be converted to bytes before here.
 
+            # NOTE: Use the names from C land here (like MH_MAX_NAME_LEN) since
+            #       sizeof is being used. Hopefully, that works as expected.
             # TODO: do we need all of this here? do we need a null term? is
             #       there a better way?
             name_len = (MH_MAX_NAME_LEN * sizeof(char)) - 1
