@@ -49,7 +49,7 @@ a websocket server (acting as a client of this application).
 ### C Driver Usage
 * Build the driver.
  * cd to the c_driver directory
- * run `gcc driver.c -o driver`
+ * run `./builddriver.sh`
  * ignore warnings for now
 * run the driver with `./driver`. This should be started before the
   server_side/server_main.py is.
