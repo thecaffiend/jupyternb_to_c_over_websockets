@@ -85,6 +85,11 @@ this list will be manually kept up to date.
 * Install new packages (as needed...should be documented here already)
 `conda install --name websocket_driver_server [packages]` or (in the activated
 environment)`pip install [packages]`
+* Build the Cython header Wrapper
+ * cd to the cython_wrapper directory
+ * run `./build_inplace.sh`
+ * to remove the built files (again from the cython_wrapper dir), run
+   `./clean_built.sh`
 * Run websocket the server (needs its own process) from the server_side dir
 `python server_main.py`
 * NOTE: this should be a jupyter notebook of it's own soon.
