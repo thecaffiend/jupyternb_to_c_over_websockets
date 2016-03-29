@@ -12,6 +12,18 @@
 extern "C" {
 #endif
 
+// enum of some message types
+typedef enum __sc_msg_types_e
+{
+  SC_GET_REQ =   10,
+  SC_GET_RESP,
+
+  SC_SET_REQ =   100,
+  SC_SET_RESP,
+
+  SC_END_MSG_TYPE
+} SC_MSG_TYPES_t;
+
 /*
  * some header struct
  */
