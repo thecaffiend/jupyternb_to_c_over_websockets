@@ -22,11 +22,19 @@ from header_wrapper cimport (
 
 from libc.stdint cimport int32_t, uint32_t
 
+# TODO: break this up into multiple files. about to add wrapper classes for
+#       things and this will get unweildly
+
+###
+
 # struct wrappers
 
-# this gives access to the structs as dicts with keys equal to the struct
-# fields. it *does not* respect things like name lengths, so those have to
-# be added in extension classes like below.
+# this gives access from python to the structs as dicts with keys equal to the
+# struct fields. it *does not* respect things like name lengths, types (nameStr
+# can be set to anything), so those have to be added in extension classes like
+# below (MHListItem).
+# TODO: MHListItem operates on the struct pointer, not a dict. update that or
+#       do everything the same (unless providing an example)
 
 # TODO: wrap these dicts to protect types (e.g. MH_LIST_ITEM['nameStr'] can be
 #       assigned non-b'' strings if you want) and to enforce length constraints
@@ -42,13 +50,25 @@ MH_LIST_ITEM = _MH_LIST_ITEM
 cpdef  MH_ITEM_LIST_t _MH_ITEM_LIST
 MH_ITEM_LIST = _MH_ITEM_LIST
 
-# enum wrappers
+# enum wrappers and values
 cpdef  SC_MSG_TYPES_t _SC_MSG_TYPES
 SC_MSG_TYPES = _SC_MSG_TYPES
+GET_REQ = SC_GET_REQ
+GET_RESP = SC_GET_RESP
+SET_REQ = SC_SET_REQ
+SET_RESP = SC_SET_RESP
+END_MSG_TYPE = SC_END_MSG_TYPE
 
 # consts
 MAX_NAME_LEN = MH_MAX_NAME_LEN
 MAX_LIST_ITEMS = MH_MAX_ITEMS
+
+GET_REQ = SC_GET_REQ
+GET_RESP = SC_GET_RESP
+SET_REQ = SC_SET_REQ
+SET_RESP = SC_SET_RESP
+END_MSG_TYPE = SC_END_MSG_TYPE
+
 
 cdef class MHListItem:
     """
