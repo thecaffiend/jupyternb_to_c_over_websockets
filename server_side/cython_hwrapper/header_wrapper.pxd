@@ -5,7 +5,7 @@ from libc.stdint cimport int32_t, uint32_t
 # re-include here.
 cdef extern from *:
     # alternate form of the struct def. see cython docs.
-    cdef struct __sc_header_s:
+    struct __sc_header_s:
         int32_t  type
         int32_t  status
         uint32_t code
@@ -13,7 +13,7 @@ cdef extern from *:
 
     ctypedef __sc_header_s SC_HEADER_t
 
-    cdef enum __sc_msg_types_e:
+    enum __sc_msg_types_e:
       SC_GET_REQ = 10
       SC_GET_RESP
       SC_SET_REQ = 100
@@ -23,10 +23,10 @@ cdef extern from *:
     ctypedef __sc_msg_types_e SC_MSG_TYPES_t
 
 cdef extern from "mainheader.h":
-    cdef int MH_MAX_NAME_LEN
-    cdef int MH_MAX_ITEMS
+    int MH_MAX_NAME_LEN
+    int MH_MAX_ITEMS
 
-    cdef struct __mh_list_item_s:
+    struct __mh_list_item_s:
         int32_t itemType
         int32_t scMsgType
         # TODO: how to use MH_MAX_NAME_LEN instead of 32 here?
@@ -35,7 +35,7 @@ cdef extern from "mainheader.h":
 
     ctypedef __mh_list_item_s MH_LIST_ITEM_t
 
-    cdef struct __mh_item_list_s:
+    struct __mh_item_list_s:
         SC_HEADER_t  header
         # TODO: how to use MH_MAX_ITEMS instead of 64 here?
         MH_LIST_ITEM_t   itemList[64]
