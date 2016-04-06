@@ -1,10 +1,18 @@
+# TODO: check all imports for usage
 from cpython.mem cimport (
     PyMem_Malloc,
     PyMem_Free,
 )
 
+from cpython cimport (
+    array,
+)
+import array
+
 from libc.string cimport (
     memset,
+    memcpy,
+    strlen,
     strncpy,
 )
 
@@ -24,7 +32,9 @@ from libc.stdint cimport int32_t, uint32_t
 
 # TODO: break this up into multiple files. about to add wrapper classes for
 #       things and this will get unweildly
-
+# TODO: size_t/bytesize property (can it just sizeof MH_LIST_ITEM_t?)
+# TODO: from_bytes (rename that and this method) method
+# TODO: replace the sizeof's with the len methods
 ###
 
 # struct wrappers
@@ -77,6 +87,7 @@ cdef class MHListItem:
     TODO: Error checking on value sets!
     """
     cdef MH_LIST_ITEM_t* _list_item
+    cdef int _bytesize
 
     def __cinit__(self):
         """
@@ -85,6 +96,7 @@ cdef class MHListItem:
         self._list_item = <MH_LIST_ITEM_t*> PyMem_Malloc(
           sizeof(MH_LIST_ITEM_t)
         )
+        self._bytesize = sizeof(MH_LIST_ITEM_t)
 
         # if it's NULL, that's bad...
         if self._list_item == NULL:
@@ -99,6 +111,24 @@ cdef class MHListItem:
         that's cool. This will be a no-op in that case.
         """
         PyMem_Free(self._list_item)
+
+    def __len__(self):
+        """
+        Return size of self._list_item struct. Set in __cinit__
+        """
+        return self._bytesize
+
+    def get_bytes(self):
+        """
+        Return a copy of the self._list_item as bytes for a socket.
+        """
+        # TODO: make this a calculated attr (property)?
+        cdef array.array arraytemplate = array.array('B', [])
+        cdef array.array bites
+        bites = array.clone(arraytemplate, self._bytesize, zero=True)
+        # TODO: check this logic another time and test thoroughly
+        memcpy(bites.data.as_voidptr, self._list_item, self._bytesize)
+        return bites
 
     property item_type:
         """
@@ -135,9 +165,18 @@ cdef class MHListItem:
             #       sizeof is being used. Hopefully, that works as expected.
             # TODO: do we need all of this here? do we need a null term? is
             #       there a better way?
-            name_len = (MH_MAX_NAME_LEN * sizeof(char)) - 1
-            memset(self._list_item.nameStr, 0, sizeof(MH_MAX_NAME_LEN))
-            strncpy(self._list_item.nameStr, ns, name_len)
+            # LEFTOFF
+            name_sz = (MH_MAX_NAME_LEN * sizeof(char)) - 1
+            ns_len = strlen(ns)
+            cpy_len = ns_len
+
+            if ns_len >= MH_MAX_NAME_LEN:
+                # new name is sring is too long.
+                # TODO: Truncate for now, but consider throwing error...
+                cpy_len = name_sz
+
+            memset(self._list_item.nameStr, 0, MH_MAX_NAME_LEN)
+            memcpy(self._list_item.nameStr, ns, cpy_len * sizeof(char))
 
     # TODO: investigate @property usage. setters didn't appear to work (gave
     #       "TypeError: 'property' object is not callable", but perhaps there
