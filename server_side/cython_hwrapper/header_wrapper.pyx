@@ -87,7 +87,7 @@ cdef class MHListItem:
     TODO: Error checking on value sets!
     """
     cdef MH_LIST_ITEM_t* _list_item
-    cdef int _bytesize
+    cdef readonly int _bytesize
 
     def __cinit__(self):
         """
@@ -160,58 +160,12 @@ cdef class MHListItem:
 
         def __set__(self, const char* ns):
             # ns should be converted to bytes before here.
-
-            # NOTE: Use the names from C land here (like MH_MAX_NAME_LEN) since
-            #       sizeof is being used. Hopefully, that works as expected.
-            # TODO: do we need all of this here? do we need a null term? is
-            #       there a better way?
-            # LEFTOFF
-            name_sz = (MH_MAX_NAME_LEN * sizeof(char)) - 1
+            name_sz = MH_MAX_NAME_LEN - 1
             ns_len = strlen(ns)
-            cpy_len = ns_len
+            # check if new name is too long.
+            # TODO: Truncate for now, but consider throwing error...
+            cpy_len = name_sz if ns_len >= MH_MAX_NAME_LEN else ns_len
 
-            if ns_len >= MH_MAX_NAME_LEN:
-                # new name is sring is too long.
-                # TODO: Truncate for now, but consider throwing error...
-                cpy_len = name_sz
-
+            # good citizen, zero the mem and then copy the string
             memset(self._list_item.nameStr, 0, MH_MAX_NAME_LEN)
             memcpy(self._list_item.nameStr, ns, cpy_len * sizeof(char))
-
-    # TODO: investigate @property usage. setters didn't appear to work (gave
-    #       "TypeError: 'property' object is not callable", but perhaps there
-    #       was a typo somewhere. original included below)
-    # @property
-    # def item_type(self):
-    #     """
-    #     Get/set the internal struct's itemType.
-    #     """
-    #     return self._list_item.itemType
-    #
-    # @item_type.setter
-    # def item_type(self, int32_t it):
-    #     self._list_item.itemType = it
-    #
-    # @property
-    # def sc_msg_type(self):
-    #     """
-    #     Get/set the internal struct's scMsgType.
-    #     """
-    #     return self._list_item.scMsgType
-    #
-    # @sc_msg_type.setter
-    # def sc_msg_type(self, int32_t smt):
-    #     self._list_item.scMsgType = smt
-    #
-    # @property
-    # def name_str(self):
-    #     """
-    #     Get/set the internal struct's nameStr.
-    #     """
-    #     return self._list_item.nameStr.decode('UTF-8')
-    #
-    # @name_str.setter
-    # def name_str(self, const char* ns):
-    #     name_len = (MH_MAX_NAME_LEN * sizeof(char)) - 1
-    #     memset(self._list_item, 0, sizeof(MH_LIST_ITEM_t))
-    #     strncpy(self._list_item.nameStr, ns, name_len)
