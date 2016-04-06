@@ -32,9 +32,16 @@ from libc.stdint cimport int32_t, uint32_t
 
 # TODO: break this up into multiple files. about to add wrapper classes for
 #       things and this will get unweildly
-# TODO: size_t/bytesize property (can it just sizeof MH_LIST_ITEM_t?)
-# TODO: from_bytes (rename that and this method) method
-# TODO: replace the sizeof's with the len methods
+# TODO: is bytearray or bytes better than using array.array?
+# TODO: make get_bytes/from_bytes properties? one property (asbytes or somesuch
+#       and use the implementations as is for __get_ and __set__)?
+# TODO: for from_bytes/get_bytes methods (or property), maintain internal
+#       array and manipulate that as needed? array has tobytes/frombytes
+#       methods already
+# TODO: replace the sizeof's with the len methods or self._bytesize
+# TODO: Error checking on value/property sets (like lengths, etc)!
+# TODO: see what can be moved into a common base class that these extend (like
+#       common properties, __len__ - if a wrapped type is known, etc)
 ###
 
 # struct wrappers
@@ -79,31 +86,32 @@ SET_REQ = SC_SET_REQ
 SET_RESP = SC_SET_RESP
 END_MSG_TYPE = SC_END_MSG_TYPE
 
+# relevant cython links for extension types/methods:
+# http://docs.cython.org/src/userguide/extension_types.html
+# http://docs.cython.org/src/userguide/special_methods.html#special-methods
 
 cdef class MHListItem:
     """
     Class wrapping the list item struct.
-
-    TODO: Error checking on value sets!
     """
     cdef MH_LIST_ITEM_t* _list_item
     cdef readonly int _bytesize
 
     def __cinit__(self):
         """
+        C-Like initialization for the class
         """
-        # allocate memory for the internal struct
-        self._list_item = <MH_LIST_ITEM_t*> PyMem_Malloc(
-          sizeof(MH_LIST_ITEM_t)
-        )
+        # set the size to what we should be
         self._bytesize = sizeof(MH_LIST_ITEM_t)
+        # allocate memory for the internal struct
+        self._list_item = <MH_LIST_ITEM_t*> PyMem_Malloc(self._bytesize)
 
         # if it's NULL, that's bad...
         if self._list_item == NULL:
           raise MemoryError("Could not allocate memory for a MHListItem!")
 
-        # otherwise, party. initialize it to 0's
-        memset(self._list_item, 0, sizeof(MH_LIST_ITEM_t))
+        # otherwise, party. initialize the struct to 0's
+        memset(self._list_item, 0, self._bytesize)
 
     def __dealloc__(self):
         """
@@ -122,13 +130,26 @@ cdef class MHListItem:
         """
         Return a copy of the self._list_item as bytes for a socket.
         """
-        # TODO: make this a calculated attr (property)?
         cdef array.array arraytemplate = array.array('B', [])
         cdef array.array bites
         bites = array.clone(arraytemplate, self._bytesize, zero=True)
-        # TODO: check this logic another time and test thoroughly
         memcpy(bites.data.as_voidptr, self._list_item, self._bytesize)
         return bites
+
+    def from_bytes(self, bitelike):
+        """
+        Set self._list_item from a byte-like item.
+        """
+        cdef array.array bites
+        if len(bitelike) != self._bytesize:
+            # Not the right size. raise an error
+            raise ValueError(
+                'MHListItem.from_bytes expected bitelike size to be %s but ' \
+                'got size %s.' % (self._bytesize, len(bitelike))
+            )
+        # we can try to set with this...
+        bites = array.array('B', bitelike)
+        memcpy(self._list_item, bites.data.as_voidptr, self._bytesize)
 
     property item_type:
         """
@@ -160,6 +181,8 @@ cdef class MHListItem:
 
         def __set__(self, const char* ns):
             # ns should be converted to bytes before here.
+            # TODO: error check for bytes/const char* of arg. or should we just
+            #       take a string and go?
             name_sz = MH_MAX_NAME_LEN - 1
             ns_len = strlen(ns)
             # check if new name is too long.
@@ -168,4 +191,4 @@ cdef class MHListItem:
 
             # good citizen, zero the mem and then copy the string
             memset(self._list_item.nameStr, 0, MH_MAX_NAME_LEN)
-            memcpy(self._list_item.nameStr, ns, cpy_len * sizeof(char))
+            memcpy(self._list_item.nameStr, ns, cpy_len)
