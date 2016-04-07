@@ -247,10 +247,9 @@ cdef class MHListItem(WrapperBase):
             # nameStr is a bytes_string
             return self._wrapper.data.li.nameStr.decode('UTF-8')
 
-        def __set__(self, const char* ns):
-            # ns should be converted to bytes before here.
-            # TODO: error check for bytes/const char* of arg. or should we just
-            #       take a string and go?
+        def __set__(self, namestr):
+            py_bytes = namestr.encode('UTF-8')
+            cdef const char* ns = py_bytes
             name_sz = MH_MAX_NAME_LEN - 1
             ns_len = strlen(ns)
             # check if new name is too long.

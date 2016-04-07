@@ -19,9 +19,7 @@ class MHListItemTest(unittest.TestCase):
         self.mli_set = MHListItem()
         self.mli_set.item_type = 1
         self.mli_set.sc_msg_type = 2
-        # TODO: Change this if the name_str setter is changed to accept a
-        #       non-binary string.
-        self.mli_set.name_str = b'steve'
+        self.mli_set.name_str = 'steve'
         print('MHListItemTest:setUp_:end')
 
     def tearDown(self):
@@ -46,11 +44,11 @@ class MHListItemTest(unittest.TestCase):
     def testNameLenConstraint(self):
         """Set the name to a long string to test the length constraint"""
         print ('MHListItemTest:testNameLenConstraint')
-        s = b's' * (MAX_NAME_LEN-1) # account for NULL terminator
-        s_long = s + b's'
+        s = 's' * (MAX_NAME_LEN-1) # account for NULL terminator
+        s_long = s + 's'
 
         self.mli_set.name_str = s_long
         # Make sure the set name is the shorter version (trucation should have
         # happened)
         # TODO: change if trucation behavior is changed
-        self.assertEqual(self.mli_set.name_str, s.decode('UTF-8'))
+        self.assertEqual(self.mli_set.name_str, s)
