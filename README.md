@@ -77,6 +77,9 @@ this list will be manually kept up to date.
 * ipython
 * cython
 
+### server_side Cython Wrapper
+This is the wrapper that makes the C Header declarations available in python.
+
 ### server_side Usage
 * Make the environment (assuming Anaconda is installed and on the path)
 `conda create --name websocket_dirver_server python=3 tornado pep8`
@@ -90,6 +93,8 @@ environment)`pip install [packages]`
  * run `./build_inplace.sh`
  * to remove the built files (again from the cython_wrapper dir), run
    `./clean_built.sh`
+ * from the cython_wrapper directory, run `python test_all.py` to test the
+   build.
 * Run websocket the server (needs its own process) from the server_side dir
 `python server_main.py`
 * NOTE: this should be a jupyter notebook of it's own soon.
