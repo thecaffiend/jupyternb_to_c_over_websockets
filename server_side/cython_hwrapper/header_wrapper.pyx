@@ -160,6 +160,26 @@ cdef class WrapperBase:
         # TODO: check code using this to make sure it checks for NULL.
         return p
 
+    def __len__(self):
+        """
+        Return size of self._data ptr. Set in __cinit__
+        """
+        if self._bytesize <= 0:
+            t = self._wrapper.type
+            if t == HEADER:
+                self._bytesize = sizeof(SC_HEADER_t)
+            elif t == LISTITEM:
+                self._bytesize = sizeof(MH_LIST_ITEM_t)
+            elif t == ITEMLIST:
+                self._bytesize = sizeof(MH_ITEM_LIST_t)
+            else:
+                raise ValueError(
+                    "WrapperBase.__len__: Cannot determine the type of the " \
+                    "wrapped data and therefore don't know the size."
+                )
+
+        return self._bytesize
+
     def tobytes(self):
         """
         Returns a copy of the wrapped _data pointer as an array of bytes.
@@ -213,11 +233,11 @@ cdef class MHListItem(WrapperBase):
         # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
         memset(self._wrapper.data.li, 0, self._bytesize)
 
-    def __len__(self):
-        """
-        Return size of self._data ptr. Set in __cinit__
-        """
-        return self._bytesize
+    # def __len__(self):
+    #     """
+    #     Return size of self._data ptr. Set in __cinit__
+    #     """
+    #     return self._bytesize
 
     property item_type:
         """
@@ -260,3 +280,68 @@ cdef class MHListItem(WrapperBase):
             # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
             memset(self._wrapper.data.li.nameStr, 0, MH_MAX_NAME_LEN)
             memcpy(self._wrapper.data.li.nameStr, ns, cpy_len)
+
+cdef class SCHeader(WrapperBase):
+    """
+    Class wrapping the header struct.
+    """
+
+    def __cinit__(self):
+        """
+        C-Like initialization for the class
+        """
+        # set the size to what we should be
+        self._bytesize = sizeof(SC_HEADER_t)
+        # allocate memory for the internal struct
+        self._wrapper.type = HEADER
+
+        self._wrapper.data.sh = <SC_HEADER_t*> PyMem_Malloc(self._bytesize)
+
+        # if it's NULL, that's bad...
+        # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
+        if self._wrapper.data.sh == NULL:
+          raise MemoryError("Could not allocate memory for a SCHeader!")
+
+        # otherwise, party. initialize the struct to 0's
+        # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
+        memset(self._wrapper.data.sh, 0, self._bytesize)
+
+    property htype:
+        """
+        Get/set the internal struct's type.
+        """
+        def __get__(self):
+            return self._wrapper.data.sh.type
+
+        def __set__(self, int32_t sht):
+            self._wrapper.data.sh.type = sht
+
+    property hstatus:
+        """
+        Get/set the internal struct's status.
+        """
+        def __get__(self):
+            return self._wrapper.data.sh.status
+
+        def __set__(self, int32_t shs):
+            self._wrapper.data.sh.status = shs
+
+    property hcode:
+        """
+        Get/set the internal struct's code.
+        """
+        def __get__(self):
+            return self._wrapper.data.sh.code
+
+        def __set__(self, uint32_t shc):
+            self._wrapper.data.sh.code = shc
+
+    property hlength:
+        """
+        Get/set the internal struct's length.
+        """
+        def __get__(self):
+            return self._wrapper.data.sh.length
+
+        def __set__(self, uint32_t shl):
+            self._wrapper.data.sh.length = shl
