@@ -101,37 +101,64 @@ END_MSG_TYPE = SC_END_MSG_TYPE
 # http://docs.cython.org/src/userguide/extension_types.html
 # http://docs.cython.org/src/userguide/special_methods.html#special-methods
 
-# TODO: any benefit to using this instead of the void* for _data?
-#   cdef union WrappedPtr:
-#       SC_HEADER_t* sh
-#       MH_LIST_ITEM_t* li
-#       MH_ITEM_LIST_t* il
-#
-#   It can be added to the base class with:
-#       `cdef WrappedPtr _wrapped_ptr`
-#   and accessed in the subclasses with (e.g. MH_LIST_ITEM_t* is the wrapped
-#   type desired and self._bytesize has been set already):
-#       `self._wrapped_ptr.li = <MH_LIST_ITEM_t*> PyMem_Malloc(self._bytesize)`
-#   It might help with knowing the type/size without having it directly
+# Enum for the types of structs that are wrappable
+cdef enum __data_type_e:
+    HEADER
+    LISTITEM
+    ITEMLIST
+
+ctypedef __data_type_e DATA_TYPE_t
+
+# union for pointers to wrappable types
+cdef union __data_u:
+    SC_HEADER_t* sh
+    MH_LIST_ITEM_t* li
+    MH_ITEM_LIST_t* il
+
+ctypedef __data_u DATA_t
+
+# struct for wrapped data ptr, and it's type
+cdef struct __data_type_wrapper_s:
+    DATA_TYPE_t type
+    DATA_t data
+
+ctypedef __data_type_wrapper_s DATA_WRAPPER_t
 
 cdef class WrapperBase:
     """
     Base class for all of our wrapped items. defines common methods and
     data structures.
     """
-    # the buffer for our wrapped item
-    cdef void* _data
     # the size of the wrapped item
+    # TODO: either make one method (like __len__ in this base class) for size,
+    #       or make the size part of the DATA_WRAPPER_t type
     cdef readonly int _bytesize
-    # TODO: would really like a place to store the wrapped type (so we can use
-    #       it when raising error and such)
+
+    # Our wrapped data and type
+    cdef DATA_WRAPPER_t _wrapper
 
     def __dealloc__(self):
         """
         Deallocate the memory for the internal _data ptr.
         """
-        if self._data != NULL:
-            PyMem_Free(self._data)
+        cdef void* p = self.wrapped_ptr()
+        if p != NULL:
+            PyMem_Free(p)
+
+    cdef void* wrapped_ptr(self):
+        """
+        Return the wrapped data ptr (the data part of self._wrapper) as a void*
+        Convenience for thins like __dealloc__
+        """
+        cdef void* p = NULL
+        if self._wrapper.type == HEADER:
+            p = self._wrapper.data.sh
+        elif self._wrapper.type == LISTITEM:
+            p = self._wrapper.data.li
+        elif self._wrapper.type == ITEMLIST:
+            p = self._wrapper.data.il
+        # TODO: check code using this to make sure it checks for NULL.
+        return p
 
     def tobytes(self):
         """
@@ -140,7 +167,8 @@ cdef class WrapperBase:
         cdef array.array arraytemplate = array.array('B', [])
         cdef array.array bites
         bites = array.clone(arraytemplate, self._bytesize, zero=True)
-        memcpy(bites.data.as_voidptr, self._data, self._bytesize)
+        # TODO: check wrapped_ptr for NULL before using!
+        memcpy(bites.data.as_voidptr, self.wrapped_ptr(), self._bytesize)
         return bites
 
     def frombytes(self, bitelike):
@@ -157,7 +185,8 @@ cdef class WrapperBase:
             )
         # we can try to set with this...
         bites = array.array('B', bitelike)
-        memcpy(self._data, bites.data.as_voidptr, self._bytesize)
+        # TODO: check wrapped_ptr for NULL before using!
+        memcpy(self.wrapped_ptr(), bites.data.as_voidptr, self._bytesize)
 
 
 cdef class MHListItem(WrapperBase):
@@ -172,14 +201,17 @@ cdef class MHListItem(WrapperBase):
         # set the size to what we should be
         self._bytesize = sizeof(MH_LIST_ITEM_t)
         # allocate memory for the internal struct
-        self._data = <MH_LIST_ITEM_t*> PyMem_Malloc(self._bytesize)
+        self._wrapper.type = LISTITEM
+        self._wrapper.data.li = <MH_LIST_ITEM_t*> PyMem_Malloc(self._bytesize)
 
         # if it's NULL, that's bad...
-        if self._data == NULL:
+        # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
+        if self._wrapper.data.li == NULL:
           raise MemoryError("Could not allocate memory for a MHListItem!")
 
         # otherwise, party. initialize the struct to 0's
-        memset(self._data, 0, self._bytesize)
+        # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
+        memset(self._wrapper.data.li, 0, self._bytesize)
 
     def __len__(self):
         """
@@ -192,20 +224,20 @@ cdef class MHListItem(WrapperBase):
         Get/set the internal struct's itemType.
         """
         def __get__(self):
-            return (<MH_LIST_ITEM_t*>self._data).itemType
+            return self._wrapper.data.li.itemType
 
         def __set__(self, int32_t li):
-            (<MH_LIST_ITEM_t*>self._data).itemType = li
+            self._wrapper.data.li.itemType = li
 
     property sc_msg_type:
         """
         Get/set the internal struct's scMsgType.
         """
         def __get__(self):
-            return (<MH_LIST_ITEM_t*>self._data).scMsgType
+            return self._wrapper.data.li.scMsgType
 
         def __set__(self, int32_t smt):
-            (<MH_LIST_ITEM_t*>self._data).scMsgType = smt
+            self._wrapper.data.li.scMsgType = smt
 
     property name_str:
         """
@@ -213,7 +245,7 @@ cdef class MHListItem(WrapperBase):
         """
         def __get__(self):
             # nameStr is a bytes_string
-            return (<MH_LIST_ITEM_t*>self._data).nameStr.decode('UTF-8')
+            return self._wrapper.data.li.nameStr.decode('UTF-8')
 
         def __set__(self, const char* ns):
             # ns should be converted to bytes before here.
@@ -226,5 +258,6 @@ cdef class MHListItem(WrapperBase):
             cpy_len = name_sz if ns_len >= MH_MAX_NAME_LEN else ns_len
 
             # good citizen, zero the mem and then copy the string
-            memset((<MH_LIST_ITEM_t*>self._data).nameStr, 0, MH_MAX_NAME_LEN)
-            memcpy((<MH_LIST_ITEM_t*>self._data).nameStr, ns, cpy_len)
+            # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
+            memset(self._wrapper.data.li.nameStr, 0, MH_MAX_NAME_LEN)
+            memcpy(self._wrapper.data.li.nameStr, ns, cpy_len)
