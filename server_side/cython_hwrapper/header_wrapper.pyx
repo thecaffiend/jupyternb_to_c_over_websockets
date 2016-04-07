@@ -30,6 +30,7 @@ from header_wrapper cimport (
 
 from libc.stdint cimport int32_t, uint32_t
 
+# TODO: Meta TODO, look for TODO's in code below
 # TODO: break this up into multiple files. about to add wrapper classes for
 #       things and this will get unweildly
 # TODO: is bytearray or bytes better than using array.array?
@@ -42,6 +43,16 @@ from libc.stdint cimport int32_t, uint32_t
 # TODO: Error checking on value/property sets (like lengths, etc)!
 # TODO: see what can be moved into a common base class that these extend (like
 #       common properties, __len__ - if a wrapped type is known, etc)
+# TODO: Using PyMem_Free and PyMem_Malloc, which require the GIL to be aquired.
+#       has not been an issue yet, but look into if this will be a problem, and
+#       if so, look into the Py_RawXXX versions that don't require it (or,
+#       aquire the GIL)
+# TODO: switching to a base class with void* _data makes the subclasses a bit
+#       simpler, but requires casting the ptr type everywhere. What's a better
+#       way? using the wrapped type in a union instead might work (see above),
+#       but seems the common methods that operate on _data would need to know
+#       the right type, right (like to deallocate the right pointer). Have
+#       thought about this for a whole 5 miutes...
 ###
 
 # struct wrappers
@@ -90,12 +101,69 @@ END_MSG_TYPE = SC_END_MSG_TYPE
 # http://docs.cython.org/src/userguide/extension_types.html
 # http://docs.cython.org/src/userguide/special_methods.html#special-methods
 
-cdef class MHListItem:
+# TODO: any benefit to using this instead of the void* for _data?
+#   cdef union WrappedPtr:
+#       SC_HEADER_t* sh
+#       MH_LIST_ITEM_t* li
+#       MH_ITEM_LIST_t* il
+#
+#   It can be added to the base class with:
+#       `cdef WrappedPtr _wrapped_ptr`
+#   and accessed in the subclasses with (e.g. MH_LIST_ITEM_t* is the wrapped
+#   type desired and self._bytesize has been set already):
+#       `self._wrapped_ptr.li = <MH_LIST_ITEM_t*> PyMem_Malloc(self._bytesize)`
+#   It might help with knowing the type/size without having it directly
+
+cdef class WrapperBase:
+    """
+    Base class for all of our wrapped items. defines common methods and
+    data structures.
+    """
+    # the buffer for our wrapped item
+    cdef void* _data
+    # the size of the wrapped item
+    cdef readonly int _bytesize
+    # TODO: would really like a place to store the wrapped type (so we can use
+    #       it when raising error and such)
+
+    def __dealloc__(self):
+        """
+        Deallocate the memory for the internal _data ptr.
+        """
+        if self._data != NULL:
+            PyMem_Free(self._data)
+
+    def tobytes(self):
+        """
+        Returns a copy of the wrapped _data pointer as an array of bytes.
+        """
+        cdef array.array arraytemplate = array.array('B', [])
+        cdef array.array bites
+        bites = array.clone(arraytemplate, self._bytesize, zero=True)
+        memcpy(bites.data.as_voidptr, self._data, self._bytesize)
+        return bites
+
+    def frombytes(self, bitelike):
+        """
+        Sets the value of the _data pointer to the contents of the passed in
+        bytes-like object
+        """
+        cdef array.array bites
+        if len(bitelike) != self._bytesize:
+            # Not the right size. raise an error
+            raise ValueError(
+                'WrapperBase.fromdata expected bitelike size to be %s but ' \
+                'got size %s.' % (self._bytesize, len(bitelike))
+            )
+        # we can try to set with this...
+        bites = array.array('B', bitelike)
+        memcpy(self._data, bites.data.as_voidptr, self._bytesize)
+
+
+cdef class MHListItem(WrapperBase):
     """
     Class wrapping the list item struct.
     """
-    cdef MH_LIST_ITEM_t* _list_item
-    cdef readonly int _bytesize
 
     def __cinit__(self):
         """
@@ -104,72 +172,40 @@ cdef class MHListItem:
         # set the size to what we should be
         self._bytesize = sizeof(MH_LIST_ITEM_t)
         # allocate memory for the internal struct
-        self._list_item = <MH_LIST_ITEM_t*> PyMem_Malloc(self._bytesize)
+        self._data = <MH_LIST_ITEM_t*> PyMem_Malloc(self._bytesize)
 
         # if it's NULL, that's bad...
-        if self._list_item == NULL:
+        if self._data == NULL:
           raise MemoryError("Could not allocate memory for a MHListItem!")
 
         # otherwise, party. initialize the struct to 0's
-        memset(self._list_item, 0, self._bytesize)
-
-    def __dealloc__(self):
-        """
-        Deallocate the heap memory for the internal struct. If it's NULL,
-        that's cool. This will be a no-op in that case.
-        """
-        PyMem_Free(self._list_item)
+        memset(self._data, 0, self._bytesize)
 
     def __len__(self):
         """
-        Return size of self._list_item struct. Set in __cinit__
+        Return size of self._data ptr. Set in __cinit__
         """
         return self._bytesize
-
-    def get_bytes(self):
-        """
-        Return a copy of the self._list_item as bytes for a socket.
-        """
-        cdef array.array arraytemplate = array.array('B', [])
-        cdef array.array bites
-        bites = array.clone(arraytemplate, self._bytesize, zero=True)
-        memcpy(bites.data.as_voidptr, self._list_item, self._bytesize)
-        return bites
-
-    def from_bytes(self, bitelike):
-        """
-        Set self._list_item from a byte-like item.
-        """
-        cdef array.array bites
-        if len(bitelike) != self._bytesize:
-            # Not the right size. raise an error
-            raise ValueError(
-                'MHListItem.from_bytes expected bitelike size to be %s but ' \
-                'got size %s.' % (self._bytesize, len(bitelike))
-            )
-        # we can try to set with this...
-        bites = array.array('B', bitelike)
-        memcpy(self._list_item, bites.data.as_voidptr, self._bytesize)
 
     property item_type:
         """
         Get/set the internal struct's itemType.
         """
         def __get__(self):
-            return self._list_item.itemType
+            return (<MH_LIST_ITEM_t*>self._data).itemType
 
         def __set__(self, int32_t li):
-            self._list_item.itemType = li
+            (<MH_LIST_ITEM_t*>self._data).itemType = li
 
     property sc_msg_type:
         """
         Get/set the internal struct's scMsgType.
         """
         def __get__(self):
-            return self._list_item.scMsgType
+            return (<MH_LIST_ITEM_t*>self._data).scMsgType
 
         def __set__(self, int32_t smt):
-            self._list_item.scMsgType = smt
+            (<MH_LIST_ITEM_t*>self._data).scMsgType = smt
 
     property name_str:
         """
@@ -177,7 +213,7 @@ cdef class MHListItem:
         """
         def __get__(self):
             # nameStr is a bytes_string
-            return self._list_item.nameStr.decode('UTF-8')
+            return (<MH_LIST_ITEM_t*>self._data).nameStr.decode('UTF-8')
 
         def __set__(self, const char* ns):
             # ns should be converted to bytes before here.
@@ -190,5 +226,5 @@ cdef class MHListItem:
             cpy_len = name_sz if ns_len >= MH_MAX_NAME_LEN else ns_len
 
             # good citizen, zero the mem and then copy the string
-            memset(self._list_item.nameStr, 0, MH_MAX_NAME_LEN)
-            memcpy(self._list_item.nameStr, ns, cpy_len)
+            memset((<MH_LIST_ITEM_t*>self._data).nameStr, 0, MH_MAX_NAME_LEN)
+            memcpy((<MH_LIST_ITEM_t*>self._data).nameStr, ns, cpy_len)
