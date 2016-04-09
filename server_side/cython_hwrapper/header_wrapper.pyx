@@ -12,6 +12,7 @@ import array
 from libc.string cimport (
     memset,
     memcpy,
+    memcmp,
     strlen,
     strncpy,
 )
@@ -31,9 +32,27 @@ from header_wrapper cimport (
 from libc.stdint cimport int32_t, uint32_t
 
 # TODO: Meta TODO, look for TODO's in code below
+# TODO: Move TODOs somewhere else (like the place in the README you made for
+#       them...)
+# TODO: change things to use _writedata
+# TODO: Methods on the MHItemList.__itemlist member. Needs some of the normal
+#       list methods, but protected
+# TODO: One of the reasons you would define a header struct for use in other
+#       structs like this is for making a protocol of some sort (messaging,
+#       controls, etc). So many other types could need the header and
+#       supported operations. There should be a base class for these (extending
+#       WrapperBase?) that defines the header member and operations. This would
+#       make this header_wrapper thing more of a generic protocol wrapper for
+#       use with cython and c/c++. Move it out to it's own repo and treat it as
+#       such (and look for other - better - implementations to see if the
+#       effort would be a waste).
+# TODO: make tobytes return bytes, not array.array
+# TODO: make sure all memcpy's have a memset of 0 first. perhaps make a method
+#       to ensure this (since its a common pattern)
 # TODO: break this up into multiple files. about to add wrapper classes for
 #       things and this will get unweildly
-# TODO: is bytearray or bytes better than using array.array?
+# TODO: is bytearray or bytes better than using array.array? bytearray since
+#       it's mutable?
 # TODO: make get_bytes/from_bytes properties? one property (asbytes or somesuch
 #       and use the implementations as is for __get_ and __set__)?
 # TODO: for from_bytes/get_bytes methods (or property), maintain internal
@@ -69,6 +88,7 @@ from libc.stdint cimport int32_t, uint32_t
 #       (thought the buffer is supposed to be 32 chars, it will happily take
 #       more, which I imagine will cause problems when used in the
 #       MH_ITEM_LIST and converted to a byte array).
+# TODO: write up why you would use these, but why we are not making use of them
 cpdef  SC_HEADER_t _SC_HEADER
 SC_HEADER = _SC_HEADER
 
@@ -159,6 +179,19 @@ cdef class WrapperBase:
             p = self._wrapper.data.il
         # TODO: check code using this to make sure it checks for NULL.
         return p
+
+    cdef void _writedata(self, void *bites, int32_t sz=0):
+        """
+        """
+        # if no sz is passed in, assume we want to write our _bytesize to
+        # data. Hopefully that isn't a poor choice...
+        # TODO: make sure this isn't a poor choice.
+        cdef int32_t nbytes
+        nbytes = sz if sz > 0 else self._bytesize
+        # clear internal buffer (whole thing, so _bytesize) and write the datas
+        # (as many bytes as told to, or _bytesize)
+        memset(self.wrapped_ptr(), 0, self._bytesize)
+        memcpy(self.wrapped_ptr(), bites, nbytes)
 
     def __len__(self):
         """
@@ -345,3 +378,208 @@ cdef class SCHeader(WrapperBase):
 
         def __set__(self, uint32_t shl):
             self._wrapper.data.sh.length = shl
+
+cdef class MHItemList(WrapperBase):
+    """
+    Class wrapping the item list struct.
+
+    TODO: This class doesn't feel right. Manually having to update the exposed
+          header and listitems objects as well as keeping the underlying struct
+          up to date seems brittle. Better way?
+    """
+    # MH_ITEM_LIST_t has a header and a list of MH_LIST_ITEM_t's:
+    cdef SCHeader __header
+    cdef list __itemlist
+
+    def __cinit__(self):
+        """
+        C-Like initialization for the class
+        """
+        # set the size to what we should be
+        self._bytesize = sizeof(MH_ITEM_LIST_t)
+        # allocate memory for the internal struct
+        self._wrapper.type = ITEMLIST
+
+        self._wrapper.data.il = <MH_ITEM_LIST_t*> PyMem_Malloc(self._bytesize)
+
+        # if it's NULL, that's bad...
+        # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
+        if self._wrapper.data.il == NULL:
+          raise MemoryError("Could not allocate memory for a MHItemList!")
+
+        # otherwise, party. initialize the struct to 0's
+        # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
+        memset(self._wrapper.data.il, 0, self._bytesize)
+
+    def __init__(self):
+        """
+        Python initialization for the class
+        """
+        self.__header = None
+        self.__itemlist = None
+
+    def _commit_bytes(self):
+        """
+        Fill in the underlying struct with the values of the corresponding
+        python objects.
+        """
+        # get the header as a bytes obj and each item in the itemlist as the
+        # same (in a list).
+        hbytes = self.header.tobytes()
+        libytes = [
+            self.itemlist[i].tobytes() for i in range(self.header.hlength)
+        ]
+
+        # make sure header and listitems agree on the number of items being
+        # written
+        nitems = self.header.hlength
+        if nitems != len(libytes):
+            raise ValueError(
+                'MHItemList cannot save to internal struct. Header says ' \
+                'there are %s list items, but %s were found' %
+                (nitems, len(libytes))
+            )
+
+        # start an array for the reconstructed bytes
+        cdef array.array bytearr
+        bytearr = array.array('B', hbytes)
+
+        # listcomp used like map() in this case, but clearer to read. extend
+        # bytearr with each array in libytes.
+        # TODO: Is this better done with bytearrays since they're mutable?
+        [bytearr.extend(arr) for arr in libytes]
+
+        # now assign the bytes in bytearr to the underlying struct
+        # get the length of the header and list items we have
+        bytelen = len(bytearr)
+
+        # get rid of any existing struct values, then copy in the new values
+        # TODO: use wrapped_ptr() but check it for NULL before using!
+        memset(self._wrapper.data.il, 0, self._bytesize)
+        memcpy(self._wrapper.data.il, bytearr.data.as_voidptr, bytelen)
+
+    def tobytes(self):
+        """
+        Override of base class's tobytes. This class is a bit more complicated,
+        so there's more to do. This calls the base class's tobytes after making
+        sure the underlying struct is properly filled in.
+        """
+        self._commit_bytes()
+        return super().tobytes()
+
+    def frombytes(self, bitelike):
+        """
+        Override the base class's frombytes. This needs to fill in not only the
+        struct, but also the objects exposed from this class (header and
+        listitems).
+        """
+        # TODO: separate a function out from this to do the opposite of
+        #       _commit_bytes
+        # TODO: is the copy of the bitelike to array here needed?
+        cdef array.array bites
+        bites = array.array('B', bitelike)
+        # TODO: This may not be a good test. It's definitely nt good to have
+        #       more bytes than expected, but less is ok if there's a header
+        #       and some number of list items defined in the bitelike. Better
+        #       test:
+        #           if len <= self._bytesize && (len - headlen) % litemlen == 0
+        #       where: len-headlen = bytelen_list_items
+        #       and: bytelen_list_items % len(listitem) = 0 if there are
+        #            n * len(listitem) bytes left
+        #       better: extract the header, and check hlength * len(listitem)
+        #               == the remaining number of bytes.
+        #
+        # Things to check:
+        #    - Do we have more bytes than expected? That's bad.
+        #    - Do we have at least a header worth of bytes? That's ok.
+        #    - If we have a header, do we have a multiple of len(listitem)
+        #      bytes remaining (even 0)? That's ok.
+        #    - Anything else is invalid.
+        blen = len(bites)
+        hlen = sizeof(SC_HEADER_t)
+        ilen = sizeof(MH_LIST_ITEM_t)
+        # get the length of the listitems
+        lilen = blen - hlen
+
+        # TODO: implement the errors
+        if blen > self._bytesize:
+            pass # error - too many bytes
+        elif blen < hlen:
+            pass # error - too few bytes
+        else:
+            if lilen % ilen != 0:
+                pass # error - not a multiple of sizeof(MH_LIST_ITEM_t)
+
+        # this is able to be decoded
+        # TODO: can this be made easier/cleaner with memoryview's or something
+        #       else?
+        hbytes = bites[0:hlen]
+        libytes = bites[hlen:]
+        nitems = lilen // ilen # number of list items
+
+        self.header.frombytes(hbytes)
+        if self.header.hlength != nitems:
+            pass # error, incoming header and itemlist disagree on number of
+                 # items
+        # TODO: make a decodeitems method to do this? will it be done a fair
+        #       amount?
+        # TODO: verify this works without a property setter (not defined)
+        #       and cleans up memory as expected...
+        del self.itemlist[:]
+        for i in range(nitems):
+            # TODO: try to clean up loop. and check indexing...
+            startbyte = i * ilen
+            endbyte = startbyte + ilen
+            itembytes = libytes[startbyte:endbyte]
+            # TODO: make constructor take optional byteslike
+            li = MHListItem()
+            li.frombytes(itembytes)
+            self.itemlist.append(li)
+
+        # LEFTOFF
+        # TODO: check wrapped_ptr for NULL before using!
+        # TODO: Check indexes
+        # TODO: should _commit_bytes be called here, or should they both
+        #       call a method that does this stuff? think separate method...
+#        memset(self._wrapper.data.il, 0, self._bytesize)
+        # only the len of the incoming bytes, not _bytesize
+#        memcpy(self.wrapped_ptr(), bites.data.as_voidptr, blen)
+        self._writedata(bites.data.as_voidptr, sz=blen)
+
+    property header:
+        """
+        Get/set the internal struct's header.
+        """
+        def __get__(self):
+            # TODO: perhaps only expose the pyobject for header and listitems
+            #       and only convert to bytes when needed?
+#             cdef const void *whptr, *hptr
+#             whptr = *(self._wrapper.data.il.header)
+#             if self.__header == None:
+#                 self.__header = SCHeader()
+#                 self.__header.frombytes(<bytes>whptr)
+#             else:
+# #                hptr = self.__header.tobytes().data.as_voidptr
+#                 barr = self.__header.tobytes()
+#                 hptr = <void*>barr.data.as_voidptr
+#                 if memcmp(whptr, hptr, self._bytesize) != 0:
+#                     self.__header.frombytes(<bytes>whptr)
+            if self.__header is None:
+                self.__header = SCHeader()
+            return self.__header
+
+        def __set__(self, SCHeader h):
+            self.__header = h
+
+    property itemlist:
+        """
+        Get the internal struct's itemlist.
+        TODO: Should we allow setting?
+        """
+        def __get__(self):
+            if self.__itemlist is None:
+                self.__itemlist = []
+            return self.__itemlist
+
+    #     def __set__(self, int32_t sht):
+    #         self._wrapper.data.sh.type = sht
