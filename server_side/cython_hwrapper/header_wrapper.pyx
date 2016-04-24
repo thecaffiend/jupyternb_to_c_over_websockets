@@ -37,6 +37,7 @@ from libc.stdint cimport int32_t, uint32_t
 # TODO: change things to use _writedata
 # TODO: Methods on the MHItemList.__itemlist member. Needs some of the normal
 #       list methods, but protected
+# TODO: Continue/finish tests for classes.
 # TODO: One of the reasons you would define a header struct for use in other
 #       structs like this is for making a protocol of some sort (messaging,
 #       controls, etc). So many other types could need the header and
@@ -195,7 +196,7 @@ cdef class WrapperBase:
 
     def __len__(self):
         """
-        Return size of self._data ptr. Set in __cinit__
+        Return size of self._wrapper.data ptr. Set in __cinit__
         """
         if self._bytesize <= 0:
             t = self._wrapper.type
@@ -233,7 +234,7 @@ cdef class WrapperBase:
         if len(bitelike) != self._bytesize:
             # Not the right size. raise an error
             raise ValueError(
-                'WrapperBase.fromdata expected bitelike size to be %s but ' \
+                'WrapperBase.frombytes expected bitelike size to be %s but ' \
                 'got size %s.' % (self._bytesize, len(bitelike))
             )
         # we can try to set with this...
@@ -265,12 +266,6 @@ cdef class MHListItem(WrapperBase):
         # otherwise, party. initialize the struct to 0's
         # TODO: use wrapped_ptr. check wrapped_ptr for NULL before using!
         memset(self._wrapper.data.li, 0, self._bytesize)
-
-    # def __len__(self):
-    #     """
-    #     Return size of self._data ptr. Set in __cinit__
-    #     """
-    #     return self._bytesize
 
     property item_type:
         """
@@ -478,26 +473,11 @@ cdef class MHItemList(WrapperBase):
         # TODO: is the copy of the bitelike to array here needed?
         cdef array.array bites
         bites = array.array('B', bitelike)
-        # TODO: This may not be a good test. It's definitely nt good to have
-        #       more bytes than expected, but less is ok if there's a header
-        #       and some number of list items defined in the bitelike. Better
-        #       test:
-        #           if len <= self._bytesize && (len - headlen) % litemlen == 0
-        #       where: len-headlen = bytelen_list_items
-        #       and: bytelen_list_items % len(listitem) = 0 if there are
-        #            n * len(listitem) bytes left
-        #       better: extract the header, and check hlength * len(listitem)
-        #               == the remaining number of bytes.
-        #
-        # Things to check:
-        #    - Do we have more bytes than expected? That's bad.
-        #    - Do we have at least a header worth of bytes? That's ok.
-        #    - If we have a header, do we have a multiple of len(listitem)
-        #      bytes remaining (even 0)? That's ok.
-        #    - Anything else is invalid.
+
         blen = len(bites)
         hlen = sizeof(SC_HEADER_t)
         ilen = sizeof(MH_LIST_ITEM_t)
+
         # get the length of the listitems
         lilen = blen - hlen
 
@@ -518,6 +498,8 @@ cdef class MHItemList(WrapperBase):
         nitems = lilen // ilen # number of list items
 
         self.header.frombytes(hbytes)
+
+        # TODO: Implement errors
         if self.header.hlength != nitems:
             pass # error, incoming header and itemlist disagree on number of
                  # items
@@ -541,9 +523,6 @@ cdef class MHItemList(WrapperBase):
         # TODO: Check indexes
         # TODO: should _commit_bytes be called here, or should they both
         #       call a method that does this stuff? think separate method...
-#        memset(self._wrapper.data.il, 0, self._bytesize)
-        # only the len of the incoming bytes, not _bytesize
-#        memcpy(self.wrapped_ptr(), bites.data.as_voidptr, blen)
         self._writedata(bites.data.as_voidptr, sz=blen)
 
     property header:
@@ -551,19 +530,6 @@ cdef class MHItemList(WrapperBase):
         Get/set the internal struct's header.
         """
         def __get__(self):
-            # TODO: perhaps only expose the pyobject for header and listitems
-            #       and only convert to bytes when needed?
-#             cdef const void *whptr, *hptr
-#             whptr = *(self._wrapper.data.il.header)
-#             if self.__header == None:
-#                 self.__header = SCHeader()
-#                 self.__header.frombytes(<bytes>whptr)
-#             else:
-# #                hptr = self.__header.tobytes().data.as_voidptr
-#                 barr = self.__header.tobytes()
-#                 hptr = <void*>barr.data.as_voidptr
-#                 if memcmp(whptr, hptr, self._bytesize) != 0:
-#                     self.__header.frombytes(<bytes>whptr)
             if self.__header is None:
                 self.__header = SCHeader()
             return self.__header
@@ -580,6 +546,3 @@ cdef class MHItemList(WrapperBase):
             if self.__itemlist is None:
                 self.__itemlist = []
             return self.__itemlist
-
-    #     def __set__(self, int32_t sht):
-    #         self._wrapper.data.sh.type = sht
