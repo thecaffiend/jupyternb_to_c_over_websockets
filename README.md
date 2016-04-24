@@ -31,6 +31,7 @@ Files are maintained. If problems are found, please drop a line.
 * Better documentation (README and code...especially code)
 * Clean up coroutines vs callbacks on the Python side (go with coroutines)
 * Better encapsulation where warranted on the Python side.
+* Add logger instead of print's in client/server
 * look at Jupyter server extensions
  * for our web socket handler (says REST handler needed in the Jupyter docs,
    but the websocket class extends from request handler, which is what is
