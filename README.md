@@ -92,6 +92,9 @@ environment)`pip install [packages]`
 * Build the Cython header Wrapper
  * cd to the cython_wrapper directory
  * run `./build_inplace.sh`
+ * Currently, this has only been used with an editable install of the package,
+   so (with the right conda environment activated) run `pip install -e .` from
+   the cython_wrapper dir to install
  * to remove the built files (again from the cython_wrapper dir), run
    `./clean_built.sh`
  * from the cython_wrapper directory, run `python test_all.py` to test the
