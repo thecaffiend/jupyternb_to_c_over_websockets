@@ -1,4 +1,7 @@
-from tornado import websocket
+from tornado import (
+    websocket,
+    escape,
+)
 
 import json
 
@@ -13,10 +16,14 @@ class WSHandler(websocket.WebSocketHandler):
     @staticmethod
     def send_to_connections(msg):
         """
+        Send incoming message to the client connections. Msg should be a dict
+        to encode as a json string.
         """
         # send the incoming message to all connected clients for processing
         # TODO: determine if there are any threading issues here...
-        [con.write_message(msg) for con in WSHandler._connections]
+
+        jdata = escape.utf8(json.dumps(msg))
+        [con.write_message(jdata) for con in WSHandler._connections]
 
     def open(self):
         """
@@ -47,7 +54,11 @@ class WSHandler(websocket.WebSocketHandler):
     def _handle_message(self, message):
         """
         Handle the incomming message. Could have more than one command included
+        :param dict message: dictionary to from client to send on to the C app.
         """
+        # TODO: Change to a better way of checking for a valid message. Right
+        #       now, just checking hasattr(message, 'items') to see if we have
+        #       a dict
         if hasattr(message, 'items'):
             # TODO: dicts here, or switch out with wrapped header structs?
             #       either way, clean up
