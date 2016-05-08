@@ -64,14 +64,14 @@ class WebSocketClient():
 
     def send(self, data):
         """Send message to the server
-        :param str data: message.
+        :param dict data: dictionary to send as message to server.
         """
         if not self._ws_connection:
             raise RuntimeError('Web socket connection is closed.')
 
         # TODO: remove print (debug) and make one liner write_message
         jdata = escape.utf8(json.dumps(data))
-        print('WSC: sending WSS %s' % (jdata))
+        print('WSC: sending WSS %s to server' % (jdata))
         self._ws_connection.write_message(escape.utf8(json.dumps(data)))
 
     def close(self):
