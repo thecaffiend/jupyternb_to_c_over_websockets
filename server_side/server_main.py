@@ -1,3 +1,5 @@
+import logging
+
 from tornado import (
     web,
     ioloop,
@@ -52,7 +54,11 @@ def handle_drvmsg(future):
     """
     if future.exception() is None:
         msg = future.result()
-        print('%s.handle_drvmsg: got %s from drv socket, sending on' % (SRVMAINID, msg))
+        logging.info(
+            '%s.handle_drvmsg: got %s from drv socket, sending on',
+            SRVMAINID,
+            msg,
+        )
         WSHandler.send_to_connections(msg)
     else:
 #        print('%s.handle_drvmsg: exception %s getting msg from drv socket' % (SRVMAINID, future.exception()))
@@ -69,10 +75,8 @@ def process_ws_commands(sock):
     cmds = list(WSHandler._cmd_list)
 #    print("%s.process_ws_commands: processing commands from wsclients %s" % (SRVMAINID, cmds))
     del WSHandler._cmd_list[:]
-    # TODO: Get rid of the cmd/value stuff. Move to dicts or wrapped header
-    #       structs
     for msg in cmds:
-        print('   Processing msg %s' % (msg))
+        logging.info('   Processing client msg %s' % (msg))
         sock.handle_ws_msg(msg)
 
 # how fast should we process the driver socket (ms)
@@ -85,7 +89,9 @@ API_SERV_PORT = 60002
 API_SERV_IP = '127.0.0.1'
 
 if __name__ == "__main__":
-    print("Starting http server for websocket on %s" % (WS_SERV_PORT))
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+
+    logging.info('Starting http server for websocket on %s' % (WS_SERV_PORT))
     application.listen(WS_SERV_PORT)
 
     # assume nothing fails here...
@@ -93,7 +99,7 @@ if __name__ == "__main__":
     drvsock.connect(API_SERV_IP, API_SERV_PORT)
 
     try:
-        print(
+        logging.info(
             'Starting IOLoop with http server for websockets and driver socket'
         )
 
@@ -108,21 +114,23 @@ if __name__ == "__main__":
 
         # background processs every LINK_RATE milliseconds
         proc_task = ioloop.PeriodicCallback(lambda: process_all(drvsock), LINK_RATE)
-        print("Starting IOLoop periodic callback...")
+        logging.info("Starting IOLoop periodic callback...")
         proc_task.start()
 
         # start the ioloop
         # TODO: Change this to use current() instead of instance()
-        print("Starting Main IOLoop (%s)..." % (ioloop.IOLoop.instance()))
+        logging.info("Starting Main IOLoop (%s)..." % (ioloop.IOLoop.instance()))
         ioloop.IOLoop.instance().start()
 
     except KeyboardInterrupt:
         # TODO: Does application need to be stopped?
         proc_task.stop()
         drvsock.close()
-        print('KeyboardInterrupt: Killed the server')
+        logging.warning('KeyboardInterrupt: Killed the server')
     except Exception as inst:
-        print("UNEXPECTED EXCEPTION")
-        print(type(inst))
-        print(inst.args)
-        print(inst)
+        logging.error(
+            "UNEXPECTED EXCEPTION: \n\t%s\n\t%s\n\t%s",
+            type(inst),
+            inst.args,
+            inst,
+        )
