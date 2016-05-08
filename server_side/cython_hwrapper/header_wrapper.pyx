@@ -366,7 +366,12 @@ cdef class SCHeader(WrapperBase):
 
     property hlength:
         """
-        Get/set the internal struct's length.
+        Get/set the internal struct's length. This should the number of items
+        in the MHItemList's list
+        TODO: Change this to be the number of bytes in the message (including
+              header)
+        TODO: Make setting of this property automagic, and not available via
+              property setter.
         """
         def __get__(self):
             return self._wrapper.data.sh.length
@@ -418,11 +423,11 @@ cdef class MHItemList(WrapperBase):
         Fill in the underlying struct with the values of the corresponding
         python objects.
         """
-        # get the header as a bytes obj and each item in the itemlist as the
+        # get the header as a bytes obj and each item in the item_list as the
         # same (in a list).
         hbytes = self.header.tobytes()
         libytes = [
-            self.itemlist[i].tobytes() for i in range(self.header.hlength)
+            self.item_list[i].tobytes() for i in range(self.header.hlength)
         ]
 
         # make sure header and listitems agree on the number of items being
@@ -507,7 +512,7 @@ cdef class MHItemList(WrapperBase):
         #       amount?
         # TODO: verify this works without a property setter (not defined)
         #       and cleans up memory as expected...
-        del self.itemlist[:]
+        del self.item_list[:]
         for i in range(nitems):
             # TODO: try to clean up loop. and check indexing...
             startbyte = i * ilen
@@ -516,7 +521,7 @@ cdef class MHItemList(WrapperBase):
             # TODO: make constructor take optional byteslike
             li = MHListItem()
             li.frombytes(itembytes)
-            self.itemlist.append(li)
+            self.item_list.append(li)
 
         # LEFTOFF
         # TODO: check wrapped_ptr for NULL before using!
@@ -537,7 +542,7 @@ cdef class MHItemList(WrapperBase):
         def __set__(self, SCHeader h):
             self.__header = h
 
-    property itemlist:
+    property item_list:
         """
         Get the internal struct's itemlist.
         TODO: Should we allow setting?
