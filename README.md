@@ -105,6 +105,7 @@ environment)`pip install [packages]`
 
 ### server_side TODO:
 * make able to send/receive custom message dicts from the clients
+* add tests for MHItemList
 * get structs working with c driver over sockets
  * implement a way to for websocket clients to register message types of
    interest (very low priority)
