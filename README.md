@@ -56,7 +56,8 @@ a websocket server (acting as a client of this application).
   server_side/server_main.py is.
 
 ### C Driver TODO:
-* Rather than echoing what's received, do something with it.
+* Rather than echoing what's received, do something with it (make a new one to
+  send back and print the incoming values).
 * Print diagnostics.
 * Include dummy header files (to show struct usage between driver and
   server_side)
@@ -137,6 +138,7 @@ sent to the server, and data comes from the server to display on the notebook
   in the notebook better soon.
 
 ### client_side TODO:
+* Add doc to the notebook for usage and assumptions.
 * make able to send/receive custom messages (to be used server_side for filling
   in C struct wrappers)
 * customizable ports (really, customizable many things)
