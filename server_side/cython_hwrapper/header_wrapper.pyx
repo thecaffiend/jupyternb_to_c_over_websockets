@@ -377,6 +377,7 @@ cdef class SCHeader(WrapperBase):
             return self._wrapper.data.sh.length
 
         def __set__(self, uint32_t shl):
+            print("--> setting header length to: %s" % (shl))
             self._wrapper.data.sh.length = shl
 
 cdef class MHItemList(WrapperBase):
@@ -426,8 +427,10 @@ cdef class MHItemList(WrapperBase):
         # get the header as a bytes obj and each item in the item_list as the
         # same (in a list).
         hbytes = self.header.tobytes()
+        print('_commit_bytes header bytes: %s' % (hbytes))
         libytes = [
-            self.item_list[i].tobytes() for i in range(self.header.hlength)
+#            self.item_list[i].tobytes() for i in range(self.header.hlength)
+            i.tobytes() for i in self.item_list
         ]
 
         # make sure header and listitems agree on the number of items being
@@ -443,6 +446,7 @@ cdef class MHItemList(WrapperBase):
         # start an array for the reconstructed bytes
         cdef array.array bytearr
         bytearr = array.array('B', hbytes)
+        print('_commit_bytes header bytearr: %s' % (bytearr))
 
         # listcomp used like map() in this case, but clearer to read. extend
         # bytearr with each array in libytes.
@@ -523,7 +527,6 @@ cdef class MHItemList(WrapperBase):
             li.frombytes(itembytes)
             self.item_list.append(li)
 
-        # LEFTOFF
         # TODO: check wrapped_ptr for NULL before using!
         # TODO: Check indexes
         # TODO: should _commit_bytes be called here, or should they both
