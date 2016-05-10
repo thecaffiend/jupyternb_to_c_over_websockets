@@ -60,7 +60,7 @@ class DriverClient:
         msgbytes: bytes like object to send to the c app.
         """
         totalsent = 0
-
+        logging.info('Sending %s to the API Server', msgbytes)
         # TODO: make this check the length and send chucked if needed
         #       robust
         # while totalsent < MSGLEN:
@@ -101,6 +101,7 @@ class DriverClient:
         #       from here (like handle_ws_msg in the other direction). That's
         #       where the conversion of bytes to objects should happen.
         logging.info('Received %s from the API server', ret)
+#        logging.info('Received msg from the API server')
 
         # convert to object for other side
         msg = self._convert_drv_msg(ret)
@@ -140,6 +141,9 @@ class DriverClient:
         mhil = MHItemList()
         mhil.frombytes(msgbytes)
 
+        logging.info('Header length from the API server: %s', mhil.header.hlength)
+
+
         # for now we need to convert this message to the dict type used by the
         # WS clients.
         # TODO: There should be a shared class for this data type
@@ -162,6 +166,16 @@ class DriverClient:
         return msg
 
     @gen.coroutine
+    def recieve_drv_msgs(self):
+        """
+        """
+        # LEFTOFF
+        # Call drvreceive, convert the returned bytes to the right thing for
+        # the WS clients, and return them. call this from the server instead of
+        # drvreceive directly
+        pass
+
+    @gen.coroutine
     def handle_ws_msg(self, msg):
         """
         Handle a message (dict) from the wsserver.
@@ -172,9 +186,11 @@ class DriverClient:
         """
         logging.info('Server\'s DriverClient is converting WS Msg %s', msg)
         mhil = self._convert_ws_msg(msg)
-        logging.info('Server\'s DriverClient is sending converted msg bytes')
+        logging.info(
+            'Server\'s DriverClient is sending converted msg bytes %s',
+            mhil.tobytes()
+        )
         sent =  self.drvsend(mhil.tobytes())
-        #sent =  self.drvsend("%s" % (msg))
         return sent
 
     def _convert_ws_msg(self, msg):
