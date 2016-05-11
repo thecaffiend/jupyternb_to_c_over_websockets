@@ -13,9 +13,15 @@
 #include "mainheader.h"
 #include "scommon.h"
 
+// Comment out to remove debug prints
+#define DEBUG
+
 #define MY_PORT		60002
 #define MAXBUF		4096
 
+/*
+ * Print the incoming buffer in hex.
+ */
 static int printBuffer(char *buffer, size_t sz){
     printf("**********************BUFFER**********************\n");
     for(int i = 0; i < sz; i++){
@@ -26,8 +32,8 @@ static int printBuffer(char *buffer, size_t sz){
 }
 
 /*
-    Process the buffer. In this case, convert to an MH_ITEM_LIST_t and print.
-*/
+ * Process the buffer. In this case, convert to an MH_ITEM_LIST_t and print.
+ */
 static int processBuffer(char *buffer, size_t sz) {
     // TODO: if buffer size is 0, return...
     MH_ITEM_LIST_t itemlist;
@@ -115,7 +121,9 @@ int main(int Count, char *Strings[]) {
 
     // now process the received stuff
     if(recsz > 0){
+#ifdef DEBUG
         printBuffer(buffer, recsz);
+#endif
         processBuffer(buffer, recsz);
     }
 
